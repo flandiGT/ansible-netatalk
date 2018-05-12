@@ -1,0 +1,20 @@
+---
+netatalk_version: 3.1.11
+
+image_name: local/netatalk-server
+image_version: "{{netatalk_version}}"
+
+container_name: netatalk.service
+
+dockerfile_path: /opt/netatalk-server/docker
+
+config_volume: ''
+data_volume: ''
+log_volume: ''
+
+interface: 0.0.0.0
+
+afp_tcp_port: ''
+ldap_tcp_port: ''
+
+accounts: []

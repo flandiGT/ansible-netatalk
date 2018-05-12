@@ -1,0 +1,33 @@
+[Install]
+WantedBy = multi-user.target
+
+[Unit]
+Description = teamspeak service
+After       = docker.service
+Requires    = docker.service
+
+[Service]
+ExecStartPre = -/usr/bin/docker rm -f {{container_name}}
+ExecStartPre = -/usr/bin/docker build --tag {{image_name}}:{{image_version}} {{dockerfile_path}}
+ExecStart = /usr/bin/docker run --name {{container_name}} \
+{% if config_volume != "" %}
+            --volume {{config_volume}}/afp.conf:/etc/afp.conf \
+{% endif %}
+{% if data_volume != "" %}
+            --volume {{data_volume}}:/timemachine \
+{% endif %}
+{% if log_volume != "" %}
+            --volume {{log_volume}}:/var/log/afpd \
+{% endif %}
+{% if afp_tcp_port != "" %}
+            --publish {{interface}}:{{afp_tcp_port}}:548 \
+{% endif %}
+{% if ldap_tcp_port != "" %}
+            --publish {{interface}}:{{ldap_tcp_port}}:636 \
+{% endif %}
+            {{image_name}}:{{image_version}}
+ExecStop  = -/usr/bin/docker stop {{container_name}}
+ExecStopPost  = -/usr/bin/docker rm -f {{container_name}}
+Restart = always
+RestartSec = 60s
+TimeoutSec=60

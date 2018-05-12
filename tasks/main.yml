@@ -1,0 +1,70 @@
+---
+- name: copy image files
+  copy:
+    src: ./docker/
+    dest: "{{dockerfile_path}}"
+    owner: root
+    group: root
+    mode: preserve
+  register: docker_image_files
+
+- name: create dockerfile
+  template:
+    src: Dockerfile.j2
+    dest: "{{dockerfile_path}}/Dockerfile"
+    owner: root
+    group: root
+    mode: 0554
+  register: dockerfile
+
+- name: build image
+  docker_image:
+    path: "{{dockerfile_path}}"
+    name: "{{image_name}}:{{image_version}}"
+    force: yes
+  register: docker_image
+  when: docker_image_files.changed or dockerfile.changed
+
+- include: create_volumes.yml
+
+- name: check config file existence
+  stat:
+    path: "{{config_volume}}/afp.conf"
+  when: config_volume != ""
+  register: config_file
+
+- name: copy config file
+  copy:
+    src: ./config/afp.conf
+    dest: "{{config_volume}}/afp.conf"
+    owner: root
+    group: root
+    mode: preserve
+  when: config_file is defined and config_file.stat.exists == False
+  register: config_file
+
+## TODO add accounts
+- name: add accounts
+  include_tasks: create_account.yml account={{item}}
+  with_items: "{{accounts}}"
+  register: accounts_creation
+
+- name: Create systemd unit file
+  template:
+    src: netatalk.systemd.j2
+    dest: /etc/systemd/system/netatalk.service
+    owner: root
+    group: root
+    mode: 0554
+  register: systemd_service
+
+- name: Reload systemd
+  command: systemctl daemon-reload
+  when: systemd_service.changed
+
+- name: Restart service
+  service:
+    name: netatalk
+    state: restarted
+    enabled: yes
+  when: docker_image.changed or systemd_service.changed or config_file.changed or accounts_creation is defined and accounts_creation.changed

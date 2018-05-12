@@ -1,0 +1,20 @@
+---
+#- name: check account's existence
+#  stat:
+#    path: "{{data_volume}}/{{item.username}}"
+#  register: account_data_volume
+#
+- name: create account's data volume
+  file:
+    path: "{{data_volume}}/{{account.username}}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+#  when: account_data_volume.stat.exists == False
+  register: account_data_volume_creation
+
+- name: add account to container
+  # docker exec timemachine add-account USERNAME PASSWORD VOL_NAME VOL_ROOT [VOL_SIZE_MB]
+  command: "docker exec {{container_name}} add-account {{account.username}} {{account.username}} {{account.name}} {{data_volume}}/{{account.username}} {{account.size_limit}}"
+  when: account_data_volume_creation.changed
